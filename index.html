@@ -12,7 +12,7 @@
         <header class="mb-8 flex justify-between items-center">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">📦 Inventarisku</h1>
-                <p class="text-gray-500 mt-1">Kelola data item pribadi</p>
+                <p class="text-gray-500 mt-1">Kelola data item pribadi (Respon Supabase Lengkap)</p>
             </div>
         </header>
 
@@ -26,8 +26,7 @@
             </form>
         </div>
 
-        <div id="itemsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            </div>
+        <div id="itemsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
     </div>
 
     <script>
@@ -63,7 +62,7 @@
             }
         }
 
-        // Event Tambah Data + Integrasi SweetAlert2
+        // Event Tambah Data + Integrasi SweetAlert2 (Tampilkan Semua Respon Supabase)
         document.getElementById('itemForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('name').value;
@@ -80,27 +79,32 @@
                 const data = await res.json();
 
                 if (!res.ok) {
-                    // Jika backend melempar HTTPException, reason-nya ada di properti 'detail'
-                    throw new Error(data.detail || "Terjadi kesalahan yang tidak diketahui.");
+                    // Jika backend bermasalah, lempar isi error detail-nya
+                    throw new Error(data.detail || JSON.stringify(data));
                 }
 
-                // Swal Pop-up Berhasil
+                // MENAMPILKAN SELURUH RESPON SUKSES DARI SUPABASE DI SWAL
                 Swal.fire({
                     icon: 'success',
-                    title: 'Berhasil Disimpan!',
-                    text: `Item "${data.name}" sukses dimasukkan ke database.`,
+                    title: 'Respon Sukses Supabase!',
+                    html: `<div class="text-left bg-gray-100 p-3 rounded-lg text-xs font-mono mt-2 overflow-x-auto">
+                            ${JSON.stringify(data, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;')}
+                           </div>`,
                     confirmButtonColor: '#2563eb'
                 });
 
                 document.getElementById('itemForm').reset();
-                fetchItems(); // Refresh tampilan grid
+                fetchItems();
 
             } catch (error) {
-                // Swal Pop-up Gagal + Menampilkan Alasan (Reason)
+                // MENAMPILKAN SELURUH RESPON ERROR DARI SUPABASE DI SWAL
                 Swal.fire({
                     icon: 'error',
-                    title: 'Gagal Menambahkan Item',
-                    text: `Alasan: ${error.message}`,
+                    title: 'Respon Gagal / Error Supabase',
+                    html: `<p class="text-sm text-red-600 mb-2 font-semibold">Gagal memproses data inventaris.</p>
+                           <div class="text-left bg-red-50 text-red-800 p-3 rounded-lg text-xs font-mono overflow-x-auto border border-red-200">
+                            ${error.message}
+                           </div>`,
                     confirmButtonColor: '#d33'
                 });
             }
@@ -109,6 +113,34 @@
         // Update Jumlah (Quantity)
         async function updateQty(id, newQty) {
             if (newQty < 0) return;
+            try {
+                const res = await fetch(`/api/items/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: newQty })
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.detail || JSON.stringify(data));
+                }
+                
+                fetchItems();
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Update Kuantitas',
+                    text: error.message,
+                    confirmButtonColor: '#d33'
+                });
+            }
+        }
+
+        // Ambil data awal saat aplikasi dimuat
+        fetchItems();
+    </script>
+</body>
+</html>
             try {
                 const res = await fetch(`/api/items/${id}`, {
                     method: 'PUT',
