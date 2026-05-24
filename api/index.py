@@ -1,30 +1,23 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import json
+from supabase import create_client, Client
 import os
 
 app = FastAPI()
 
-# Path untuk file JSON lokal (akan otomatis terbuat di dalam folder api)
-DATA_FILE = os.path.join(os.path.dirname(__file__), "data.json")
+# Ambil kredensial dari Environment Variables Vercel
+SUPABASE_URL = os.environ.get("https://jvfwzykpxnplmjyddjds.supabase.co")
+SUPABASE_KEY = os.environ.get("sb_publishable_AvmigZp4g0aaZgpQ1cH3YA_NNBHa_XF")
 
-# Fungsi untuk inisialisasi file JSON jika belum ada
-def init_db():
-    if not os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "w") as f:
-            json.dump([], f)
+# Inisialisasi client Supabase
+try:
+    if SUPABASE_URL and SUPABASE_KEY:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    else:
+        supabase = None
+except Exception as e:
+    supabase = None
 
-# Fungsi bantuan untuk baca dan tulis JSON
-def read_data():
-    init_db()
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
-
-def write_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
-# Model Data
 class ItemCreate(BaseModel):
     name: str
     image_url: str
@@ -35,36 +28,39 @@ class ItemUpdate(BaseModel):
 
 @app.get("/api/items")
 def get_items():
-    return read_data()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Koneksi ke Supabase gagal. Periksa Environment Variables Anda.")
+    try:
+        response = supabase.table("items").select("*").order("id", desc=True).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal mengambil data: {str(e)}")
 
 @app.post("/api/items")
 def add_item(item: ItemCreate):
-    data = read_data()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Koneksi ke Supabase gagal. Periksa Environment Variables Anda.")
     
-    # Bikin ID otomatis (Mencari ID terbesar yang ada + 1)
-    new_id = 1 if not data else max(i["id"] for i in data) + 1
-    
-    new_item = {
-        "id": new_id,
-        "name": item.name,
-        "image_url": item.image_url,
-        "quantity": item.quantity
-    }
-    
-    # Masukkan data baru di urutan paling atas (index 0)
-    data.insert(0, new_item)
-    write_data(data)
-    return new_item
+    try:
+        response = supabase.table("items").insert(item.dict()).execute()
+        if response.data:
+            return response.data[0]
+        else:
+            raise HTTPException(status_code=400, detail="Data kosong setelah disimpan.")
+    except Exception as e:
+        # Menangkap error dari Supabase dan mengirimkan alasan/reason ke frontend
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.put("/api/items/{item_id}")
 def update_quantity(item_id: int, item: ItemUpdate):
-    data = read_data()
-    
-    for i in range(len(data)):
-        if data[i]["id"] == item_id:
-            data[i]["quantity"] = item.quantity
-            write_data(data)
-            return data[i]
-            
-    raise HTTPException(status_code=404, detail="Item tidak ditemukan")
-    
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Koneksi ke Supabase gagal.")
+    try:
+        response = supabase.table("items").update({"quantity": item.quantity}).eq("id", item_id).execute()
+        if response.data:
+            return response.data[0]
+        else:
+            raise HTTPException(status_code=404, detail="Item tidak ditemukan untuk diupdate.")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+        
