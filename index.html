@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventaris Pribadi</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-gray-50 min-h-screen font-sans text-gray-800">
     <div class="max-w-5xl mx-auto p-6">
         <header class="mb-8 flex justify-between items-center">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">📦 Inventarisku</h1>
-                <p class="text-gray-500 mt-1">Kelola data item dengan mudah</p>
+                <p class="text-gray-500 mt-1">Kelola data item pribadi (Supabase & Swal)</p>
             </div>
         </header>
 
@@ -30,64 +31,107 @@
     </div>
 
     <script>
-        // Fetch dan tampilkan data
+        // Fetch dan tampilkan data ke Grid
         async function fetchItems() {
-            const res = await fetch('/api/items');
-            const items = await res.json();
-            const grid = document.getElementById('itemsGrid');
-            grid.innerHTML = '';
+            try {
+                const res = await fetch('/api/items');
+                if (!res.ok) throw new Error("Gagal mengambil data dari server.");
+                const items = await res.json();
+                const grid = document.getElementById('itemsGrid');
+                grid.innerHTML = '';
 
-            items.forEach(item => {
-                grid.innerHTML += `
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                        <img src="${item.image_url}" alt="${item.name}" class="w-full h-48 object-cover bg-gray-100" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
-                        <div class="p-4">
-                            <h3 class="font-semibold text-lg text-gray-900 truncate">${item.name}</h3>
-                            <div class="flex items-center justify-between mt-4">
-                                <span class="text-sm text-gray-500">Jumlah:</span>
-                                <div class="flex items-center gap-3">
-                                    <button onclick="updateQty(${item.id}, ${item.quantity - 1})" class="w-8 h-8 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors" ${item.quantity <= 0 ? 'disabled' : ''}>-</button>
-                                    <span class="font-bold text-gray-800 w-6 text-center">${item.quantity}</span>
-                                    <button onclick="updateQty(${item.id}, ${item.quantity + 1})" class="w-8 h-8 flex items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors">+</button>
+                items.forEach(item => {
+                    grid.innerHTML += `
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                            <img src="${item.image_url}" alt="${item.name}" class="w-full h-48 object-cover bg-gray-100" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
+                            <div class="p-4">
+                                <h3 class="font-semibold text-lg text-gray-900 truncate">${item.name}</h3>
+                                <div class="flex items-center justify-between mt-4">
+                                    <span class="text-sm text-gray-500">Jumlah:</span>
+                                    <div class="flex items-center gap-3">
+                                        <button onclick="updateQty(${item.id}, ${item.quantity - 1})" class="w-8 h-8 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors" ${item.quantity <= 0 ? 'disabled' : ''}>-</button>
+                                        <span class="font-bold text-gray-800 w-6 text-center">${item.quantity}</span>
+                                        <button onclick="updateQty(${item.id}, ${item.quantity + 1})" class="w-8 h-8 flex items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors">+</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            } catch (err) {
+                console.error(err);
+            }
         }
 
-        // Tambah Data
+        // Event Tambah Data + Integrasi SweetAlert2
         document.getElementById('itemForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('name').value;
             const image_url = document.getElementById('imageUrl').value;
             const quantity = parseInt(document.getElementById('quantity').value);
 
-            await fetch('/api/items', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, image_url, quantity })
-            });
+            try {
+                const res = await fetch('/api/items', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, image_url, quantity })
+                });
 
-            document.getElementById('itemForm').reset();
-            fetchItems(); // Refresh data
+                const data = await res.json();
+
+                if (!res.ok) {
+                    // Jika backend melempar HTTPException, reason-nya ada di properti 'detail'
+                    throw new Error(data.detail || "Terjadi kesalahan yang tidak diketahui.");
+                }
+
+                // Swal Pop-up Berhasil
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil Disimpan!',
+                    text: `Item "${data.name}" sukses dimasukkan ke database.`,
+                    confirmButtonColor: '#2563eb'
+                });
+
+                document.getElementById('itemForm').reset();
+                fetchItems(); // Refresh tampilan grid
+
+            } catch (error) {
+                // Swal Pop-up Gagal + Menampilkan Alasan (Reason)
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Menambahkan Item',
+                    text: `Alasan: ${error.message}`,
+                    confirmButtonColor: '#d33'
+                });
+            }
         });
 
         // Update Jumlah (Quantity)
         async function updateQty(id, newQty) {
             if (newQty < 0) return;
-            await fetch(`/api/items/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ quantity: newQty })
-            });
-            fetchItems(); // Refresh data
+            try {
+                const res = await fetch(`/api/items/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: newQty })
+                });
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.detail || "Gagal mengubah jumlah.");
+                }
+                fetchItems();
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Update',
+                    text: error.message,
+                    confirmButtonColor: '#d33'
+                });
+            }
         }
 
-        // Load data pertama kali
+        // Jalankan fetch saat web pertama kali dibuka
         fetchItems();
     </script>
 </body>
 </html>
-
