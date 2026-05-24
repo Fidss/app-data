@@ -7,7 +7,7 @@ app = FastAPI()
 
 # Ambil kredensial dari Environment Variables Vercel
 SUPABASE_URL = os.environ.get("https://jvfwzykpxnplmjyddjds.supabase.co")
-SUPABASE_KEY = os.environ.get("sb_publishable_AvmigZp4g0aaZgpQ1cH3YA_NNBHa_XF")
+SUPABASE_KEY = os.environ.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Znd6eWtweG5wbG1qeWRkamRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2MzAyMjcsImV4cCI6MjA5NTIwNjIyN30.dZURW1c9YGFOXWBigwTJEmCe0wPk6a0lseImpY4Wo0Q")
 
 # Inisialisasi client Supabase
 try:
