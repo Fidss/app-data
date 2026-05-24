@@ -38,18 +38,15 @@ def get_items():
 
 @app.post("/api/items")
 def add_item(item: ItemCreate):
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Koneksi ke Supabase gagal. Periksa Environment Variables Anda.")
-    
     try:
         response = supabase.table("items").insert(item.dict()).execute()
-        if response.data:
-            return response.data[0]
-        else:
-            raise HTTPException(status_code=400, detail="Data kosong setelah disimpan.")
+        return {
+            "data": response.data
+        }
     except Exception as e:
-        # Menangkap error dari Supabase dan mengirimkan alasan/reason ke frontend
-        raise HTTPException(status_code=400, detail=str(e))
+        return {
+            "error": str(e)
+        }
 
 @app.put("/api/items/{item_id}")
 def update_quantity(item_id: int, item: ItemUpdate):
