@@ -141,29 +141,3 @@
     </script>
 </body>
 </html>
-            try {
-                const res = await fetch(`/api/items/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ quantity: newQty })
-                });
-                if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.detail || "Gagal mengubah jumlah.");
-                }
-                fetchItems();
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal Update',
-                    text: error.message,
-                    confirmButtonColor: '#d33'
-                });
-            }
-        }
-
-        // Jalankan fetch saat web pertama kali dibuka
-        fetchItems();
-    </script>
-</body>
-</html>
